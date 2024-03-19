@@ -1,6 +1,7 @@
 import cv2
 import queue
 import mediapipe as mp
+import numpy as np
 
 imgs = queue.Queue()
 
@@ -33,15 +34,27 @@ while True:
     results = hands.process(imageRGB)
 
     if results.multi_hand_landmarks:
-        print(results.multi_hand_landmarks[0].landmark[12])
         for handLms in results.multi_hand_landmarks:
-            for id, lm in enumerate(handLms.landmark):
-                h, w, c = frame.shape
-                cx, cy = int(lm.x * w), int(lm.y * h)
-                if id == 12:
-                    cv2.circle(frame, (cx, cy), 25, (255, 0, 255), cv2.FILLED)
-                    print(lm.y)
             mpDraw.draw_landmarks(frame, handLms, mpHands.HAND_CONNECTIONS)
+
+        thumb_tip = results.multi_hand_landmarks[0].landmark[thumb[0]]
+        index_tip = results.multi_hand_landmarks[0].landmark[index[0]]
+        middle_tip = results.multi_hand_landmarks[0].landmark[middle[0]]
+        ring_tip = results.multi_hand_landmarks[0].landmark[ring[0]]
+        pinky_tip = results.multi_hand_landmarks[0].landmark[pinky[0]]
+
+        tip_ys = np.array([thumb_tip.y, index_tip.y, middle_tip.y, ring_tip.y, pinky_tip.y])
+        var = np.var(tip_ys)
+
+        if index_tip.y < middle_tip.y - 0.1:
+            print("Up")
+        elif var <= 0.005:
+            print("Down")
+        elif np.sqrt((thumb_tip.x - index_tip.x)** 2 + (thumb_tip.y - index_tip.y)** 2) <= 0.05:
+            print("Land")    
+        else:
+            print("Hover")
+
 
     cv2.imshow("Output", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
